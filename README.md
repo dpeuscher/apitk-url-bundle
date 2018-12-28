@@ -11,8 +11,12 @@ composer require check24/apitk-url-bundle
 #### Filtering
 You can specify in the annotations of the action, which fields should be filterable by the client:
 ```
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use FOS\RestBundle\Controller\Annotations as Rest;
 use Shopping\ApiTKUrlBundle\Annotation as ApiTK;
 
+class UserController extends AbstractController
+{
 /**
  * Returns the users in the system.
  *
@@ -347,3 +351,27 @@ For more advanced purposes, see refer to the "Manually accessing" section above.
 ### Documentation
 The defined filers, sorts and pagination will automatically get added to the 
 NelmioApiDoc output (aka Swagger UI). You don't have to worry about that.
+
+## Troubleshooting
+
+### Cannot autowire service "App\Repository\*" (ServiceEntityRepository)
+If you used `ServiceEntityRepository` for auto-wiring repositories as a dependency, you might get an error message that
+looks like this:
+```
+Cannot resolve argument $userRepository of "App\Controller\UserController::index()": 
+Cannot autowire service "App\Repository\UserRepository": argument "$class" of method 
+"Doctrine\ORM\EntityRepository::__construct()" references class 
+"Doctrine\ORM\Mapping\ClassMetadata" but no such service exists.
+```
+That is because `ServiceEntityRepository` uses a different constructor than doctrines entity manager expects. There is
+a mixing between Symfonys and Doctrines managers that both expect something different.
+
+To fix that, please DO NOT USE `ServiceEntityRepository` at all but use `ApiToolkitRepository` and the Doctrine entity 
+manager to get repositories. To make them available as DI services you can follow the explanation here at
+[stackoverflow](https://stackoverflow.com/questions/52479662/symfony-database-connection-with-a-repository):
+```yaml
+App\Repository\UserRepository:
+    factory: ['@doctrine.orm.default_entity_manager', 'getRepository']
+    arguments:  
+        - 'App\Entity\User'
+```
